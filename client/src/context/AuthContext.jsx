@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const checkUserExists = async () => {
-    if (!user) return;
+    if (!user || !user.agent || !user.agent._id || !user.token) return;
     
     try {
       const response = await axios.get(`http://localhost:8080/api/agents/check/${user.agent._id}`, {

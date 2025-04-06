@@ -12,11 +12,15 @@ import {
   IconButton,
   Alert,
   Tooltip,
+  Snackbar,
+  Link
 } from '@mui/material';
 import { styled, keyframes } from '@mui/material/styles';
 import axios from 'axios';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import HistoryIcon from '@mui/icons-material/History';
 import { useAuth } from '../context/AuthContext';
+import { Link as RouterLink } from 'react-router-dom';
 
 const AppContainer = styled(Box)({
   minHeight: '100vh',
@@ -232,8 +236,11 @@ const SentimentAnalyzer = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [saveNotification, setSaveNotification] = useState(false);
+  const [savedAnalysisId, setSavedAnalysisId] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const theme = useTheme();
-  const { checkUserExists } = useAuth();
+  const { checkUserExists, user } = useAuth();
 
   useEffect(() => {
     // Check user existence every 30 seconds
@@ -244,11 +251,49 @@ const SentimentAnalyzer = () => {
   const analyzeSentiment = async () => {
     try {
       setError(null);
+      setSaveError(null);
       setLoading(true);
-      const response = await axios.post('http://localhost:8080/api/sentiment/analyze', { text });
+      
+      // Get the token from the user object
+      const token = user?.token;
+      
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
+      const response = await axios.post(
+        'http://localhost:8080/api/sentiment/analyze', 
+        { text },
+        { 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (!response.data) {
+        throw new Error('No response data received');
+      }
+      
       setResult(response.data);
+      
+      // Handle storage status
+      if (response.data.storedInDb) {
+        setSavedAnalysisId(response.data.savedAnalysisId);
+        setSaveNotification(true);
+      } else if (response.data.storageError) {
+        setSaveError(response.data.storageError);
+      }
     } catch (error) {
-      setError(error.response?.data?.error || 'Error analyzing sentiment');
+      console.error('Sentiment analysis error:', error);
+      if (error.response?.status === 403) {
+        setError('Access denied. Please log in again.');
+      } else if (error.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else {
+        setError(error.response?.data?.error || error.message || 'Error analyzing sentiment');
+      }
     } finally {
       setLoading(false);
     }
@@ -258,6 +303,12 @@ const SentimentAnalyzer = () => {
     setText('');
     setResult(null);
     setError(null);
+    setSavedAnalysisId(null);
+    setSaveError(null);
+  };
+
+  const handleCloseNotification = () => {
+    setSaveNotification(false);
   };
 
   return (
@@ -281,6 +332,22 @@ const SentimentAnalyzer = () => {
           }}>
             Analyze emotions across multiple Indiana languages
           </Typography>
+          
+          {/* History Link */}
+          <Button
+            component={RouterLink}
+            to="/history"
+            startIcon={<HistoryIcon />}
+            variant="outlined"
+            sx={{ 
+              mt: 2, 
+              borderRadius: '12px',
+              textTransform: 'none',
+              fontWeight: 600
+            }}
+          >
+            View Analysis History
+          </Button>
         </Box>
 
         {/* Input Section */}
@@ -337,6 +404,18 @@ const SentimentAnalyzer = () => {
             }}
           >
             {error}
+          </Alert>
+        )}
+
+        {saveError && (
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mt: 3,
+              borderRadius: '12px',
+            }}
+          >
+            {saveError}
           </Alert>
         )}
 
@@ -414,6 +493,25 @@ const SentimentAnalyzer = () => {
             </Box>
           </Fade>
         )}
+
+        {/* Saved notification */}
+        <Snackbar
+          open={saveNotification}
+          autoHideDuration={5000}
+          onClose={handleCloseNotification}
+          message="Analysis saved successfully"
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          action={
+            <Button 
+              color="primary" 
+              component={RouterLink} 
+              to={`/history?highlight=${savedAnalysisId}`}
+              size="small"
+            >
+              View History
+            </Button>
+          }
+        />
       </ContentWrapper>
     </AppContainer>
   );

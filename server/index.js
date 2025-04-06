@@ -82,10 +82,49 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: 'Invalid token' });
+  }
+};
+
 // MongoDB Connection with retry logic
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const options = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4
+    };
+
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected. Attempting to reconnect...');
+      setTimeout(connectDB, 5000);
+    });
+
+    mongoose.connection.on('connected', () => {
+      console.log('MongoDB connected successfully');
+    });
+
+    await mongoose.connect(process.env.MONGODB_URI, options);
     console.log('Connected to MongoDB Atlas');
   } catch (err) {
     console.error('MongoDB connection error:', err);
@@ -94,12 +133,25 @@ const connectDB = async () => {
   }
 };
 
+// Ensure MongoDB disconnects properly when the server stops
+process.on('SIGINT', async () => {
+  try {
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed through app termination');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error closing MongoDB connection:', err);
+    process.exit(1);
+  }
+});
+
 connectDB();
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/sentiment', require('./routes/sentimentRoutes'));
+app.use('/api/sentiment', authenticateToken, require('./routes/sentimentRoutes'));
 app.use('/api/agents', require('./routes/agentRoutes'));
+app.use('/api/analysis-history', authenticateToken, require('./routes/analysisHistoryRoutes'));
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {

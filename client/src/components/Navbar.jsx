@@ -15,6 +15,7 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import HistoryIcon from '@mui/icons-material/History';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -85,6 +86,13 @@ const Navbar = () => {
               >
                 Analysis
               </Button>
+              <Button 
+                color="inherit" 
+                onClick={() => navigate('/history')}
+                startIcon={<HistoryIcon />}
+              >
+                History
+              </Button>
               <IconButton
                 onClick={handleMenuOpen}
                 size="small"
@@ -145,6 +153,12 @@ const Navbar = () => {
                     <SentimentSatisfiedAltIcon fontSize="small" />
                   </ListItemIcon>
                   Sentiment Analysis
+                </MenuItem>
+                <MenuItem onClick={() => navigate('/history')}>
+                  <ListItemIcon>
+                    <HistoryIcon fontSize="small" />
+                  </ListItemIcon>
+                  Analysis History
                 </MenuItem>
                 <Divider />
                 <MenuItem onClick={handleLogout}>

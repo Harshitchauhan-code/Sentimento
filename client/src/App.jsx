@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SentimentAnalyzer from './components/SentimentAnalyzer';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
+import AnalysisHistory from './components/AnalysisHistory';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -134,6 +135,14 @@ function AppContent() {
               element={
                 <PrivateRoute>
                   <SentimentAnalyzer />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <PrivateRoute>
+                  <AnalysisHistory />
                 </PrivateRoute>
               }
             />
